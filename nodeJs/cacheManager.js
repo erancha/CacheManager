@@ -51,8 +51,9 @@ class DoublyLinkedList {
 class EvictionManager {
   constructor(capacity) {
     this.capacity = capacity;
-    this.freqMap = new Map(); // frequency -> DoublyLinkedList of keys (head = most recent)
+    this.listByFrequency = new Map(); // frequency -> DoublyLinkedList of keys (head = most recent)
     this.entryByKey = new Map(); // key -> { count, node }
+    this.minFreq = 0; // tracks the smallest frequency with active keys
   }
 
   get trackedCount() {
@@ -61,34 +62,41 @@ class EvictionManager {
 
   onAddNew(key) {
     const initial = 1;
-    let list = this.freqMap.get(initial);
+    let list = this.listByFrequency.get(initial);
     if (!list) {
       list = new DoublyLinkedList();
-      this.freqMap.set(initial, list);
+      this.listByFrequency.set(initial, list);
     }
     const node = list.addFirst(key);
     this.entryByKey.set(key, { count: initial, node });
+    this.minFreq = 1;
   }
 
   onAccess(key) {
     const entry = this.entryByKey.get(key);
     if (!entry) {
-      console.warn(`[WARNING] EvictionManager.onAccess: key '${key}' not found`);
+      console.warn(`[WARNING] EvictionManager.onAccess: key '${key}' not found in entryByKey. This indicates an inconsistent cache state.`);
       return;
     }
 
     const oldCount = entry.count;
-    const oldList = this.freqMap.get(oldCount);
+    const oldList = this.listByFrequency.get(oldCount);
     if (oldList) {
       oldList.remove(entry.node);
-      if (oldList.count === 0) this.freqMap.delete(oldCount);
+      if (oldList.count === 0) {
+        this.listByFrequency.delete(oldCount);
+        // if we just deleted the minFreq list, advance minFreq
+        if (oldCount === this.minFreq) {
+          this.minFreq = oldCount + 1;
+        }
+      }
     }
 
     const newCount = oldCount + 1;
-    let newList = this.freqMap.get(newCount);
+    let newList = this.listByFrequency.get(newCount);
     if (!newList) {
       newList = new DoublyLinkedList();
-      this.freqMap.set(newCount, newList);
+      this.listByFrequency.set(newCount, newList);
     }
     const newNode = newList.addFirst(key);
     entry.count = newCount;
@@ -98,14 +106,16 @@ class EvictionManager {
   onRemove(key) {
     const entry = this.entryByKey.get(key);
     if (!entry) {
-      console.warn(`[WARNING] EvictionManager.onRemove: key '${key}' not found`);
+      console.warn(`[WARNING] EvictionManager.onRemove: key '${key}' not found in entryByKey. This indicates an inconsistent cache state.`);
       return;
     }
 
-    const list = this.freqMap.get(entry.count);
+    const list = this.listByFrequency.get(entry.count);
     if (list) {
       list.remove(entry.node);
-      if (list.count === 0) this.freqMap.delete(entry.count);
+      if (list.count === 0) {
+        this.listByFrequency.delete(entry.count);
+      }
     }
 
     this.entryByKey.delete(key);
@@ -116,17 +126,11 @@ class EvictionManager {
       return { found: false };
     }
 
-    // find the smallest frequency
-    let min = Infinity;
-    for (const f of this.freqMap.keys()) {
-      if (f < min) min = f;
-    }
-
-    const list = this.freqMap.get(min);
+    const list = this.listByFrequency.get(this.minFreq);
     const node = list.removeLast();
     const key = node.key;
 
-    if (list.count === 0) this.freqMap.delete(min);
+    if (list.count === 0) this.listByFrequency.delete(this.minFreq);
     this.entryByKey.delete(key);
 
     return { found: true, key };
