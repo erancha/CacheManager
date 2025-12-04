@@ -52,28 +52,29 @@ for (int iteration = 0; iteration < iterations; iteration++)
         switch (command)
         {
             case "PUT" when parts.Length >= 3:
-            {
-                string key = parts[1];
-                string value = string.Join(' ', parts.Skip(2));
-                cache.Put(key, value);
-                break;
-            }
+                {
+                    string key = parts[1];
+                    string value = string.Join(' ', parts.Skip(2));
+                    cache.Put(key, value);
+                    break;
+                }
             case "GET" when parts.Length >= 2:
-            {
-                string key = parts[1];
-                cache.TryGet(key, out _);
-                break;
-            }
+                {
+                    string key = parts[1];
+                    cache.TryGet(key, out _);
+                    break;
+                }
             case "REMOVE" when parts.Length >= 2:
-            {
-                string key = parts[1];
-                cache.Remove(key);
-                break;
-            }
+                {
+                    string key = parts[1];
+                    cache.Remove(key);
+                    break;
+                }
         }
     }
 }
 
+double managedBytes = GC.GetTotalMemory(false);
 var snapshot = cache.Snapshot()
     .OrderBy(kvp => kvp.Key, StringComparer.Ordinal)
     .Select(kvp => $"{kvp.Key}={kvp.Value}")
@@ -91,7 +92,6 @@ else
 {
     var previousContent = File.ReadAllText(snapshotFilePath);
     var elapsed = DateTime.UtcNow - start;
-    double managedBytes = GC.GetTotalMemory(false);
     double managedMb = managedBytes / (1024 * 1024);
 
     int cacheItemCount = (cache as CacheManager<string, string>)?.Count

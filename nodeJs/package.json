@@ -1,0 +1,11 @@
+{
+  "name": "cachemanager-node",
+  "version": "1.0.0",
+  "description": "Node.js port of CacheManager (LFU+LRU eviction) and tester",
+  "main": "tester.js",
+  "scripts": {
+    "test": "node tester.js"
+  },
+  "author": "",
+  "license": "MIT"
+}
