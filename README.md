@@ -1,4 +1,4 @@
-# CacheManager (.NET 8)
+# CacheManager
 
 This solution contains a simple generic in-memory cache manager and two console applications:
 
@@ -8,6 +8,9 @@ This solution contains a simple generic in-memory cache manager and two console 
   - Types:
     - `ICacheManager<TKey, TValue>`: basic `Put`, `TryGet`, `Remove`, and `Snapshot` operations.
     - `CacheManager<TKey, TValue>`: concrete implementation backed by `Dictionary<TKey, TValue>`.
+      - Optional **capacity-limited mode** with **LFU** (Least Frequently Used) eviction and **LRU** (Least Recently Used) as a tie-breaker.
+        - Default: unlimited capacity (no eviction), created with `new CacheManager<TKey, TValue>()`.
+        - Bounded: `new CacheManager<TKey, TValue>(maxCapacity: 100)` enables LFU+LRU-based eviction when the number of items exceeds `maxCapacity`.
 
 - **CacheManager.OpGenerator**
 
@@ -55,10 +58,15 @@ This creates or overwrites `cache_ops.txt` in `/mnt/c/Projects/CacheManager`.
 ### 2. Execute operations and write/compare cache state
 
 ```bash
-dotnet run --project ./CacheManager.Tester/CacheManager.Tester.csproj -- 100
+dotnet run --project ./CacheManager.Tester/CacheManager.Tester.csproj -- 10 1000
 ```
 
-In this example, the tester will execute the operations loop **5 times** over the same `cache_ops.txt` contents before taking the snapshot / comparison (default is **1** iteration if no argument is provided).
+You can optionally pass:
+
+- **First argument**: number of test iterations (how many times to replay `cache_ops.txt` before snapshot/compare).
+- **Second argument**: cache capacity (max number of entries before LFU+LRU eviction kicks in). If omitted or non-positive, the cache is unlimited.
+
+In the example above, the tester will execute the operations loop **10 times** over the same `cache_ops.txt` contents with a cache capacity of **1000** entries before taking the snapshot / comparison (default is **1** iteration and unlimited capacity if no arguments are provided).
 
 Behavior:
 

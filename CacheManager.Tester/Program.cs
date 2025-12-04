@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using CacheManager.Core;
 
 const string OpsFilePath = "cache_ops.txt";
-const string SnapshotFilePath = "cache_state.txt";
 
 var start = DateTime.UtcNow;
 
@@ -15,9 +14,21 @@ if (!File.Exists(OpsFilePath))
     return;
 }
 
-int iterations = args.Length > 0 && int.TryParse(args[0], out var parsedIterations) && parsedIterations > 0 ? parsedIterations : 1;
+int iterations = args.Length > 0 && int.TryParse(args[0], out var parsedIterations) && parsedIterations > 0
+    ? parsedIterations
+    : 1;
 
-ICacheManager<string, string> cache = new CacheManager<string, string>();
+int? capacity = args.Length > 1 && int.TryParse(args[1], out var parsedCapacity) && parsedCapacity > 0
+    ? parsedCapacity
+    : null;
+
+string snapshotFilePath = capacity.HasValue
+    ? $"cache_state_capacity_{capacity.Value}.txt"
+    : "cache_state_unlimited.txt";
+
+ICacheManager<string, string> cache = capacity.HasValue
+    ? new CacheManager<string, string>(capacity.Value)
+    : new CacheManager<string, string>();
 
 var lines = File.ReadAllLines(OpsFilePath);
 
@@ -70,25 +81,29 @@ var snapshot = cache.Snapshot()
 
 var newContent = string.Join(Environment.NewLine, snapshot);
 
-if (!File.Exists(SnapshotFilePath))
+if (!File.Exists(snapshotFilePath))
 {
-    File.WriteAllText(SnapshotFilePath, newContent);
-    Console.WriteLine($"Snapshot file created: {SnapshotFilePath}");
+    File.WriteAllText(snapshotFilePath, newContent);
+    Console.WriteLine($"Snapshot file created: {snapshotFilePath}");
     Console.WriteLine("Baseline cache state written.");
 }
 else
 {
-    var previousContent = File.ReadAllText(SnapshotFilePath);
+    var previousContent = File.ReadAllText(snapshotFilePath);
     var elapsed = DateTime.UtcNow - start;
     double managedBytes = GC.GetTotalMemory(false);
     double managedMb = managedBytes / (1024 * 1024);
 
+    int cacheItemCount = (cache as CacheManager<string, string>)?.Count
+        ?? newContent.Split(Environment.NewLine).Length;
+    int evictionTrackedCount = (cache as CacheManager<string, string>)?.EvictionTrackedCount ?? 0;
+
     if (string.Equals(previousContent, newContent, StringComparison.Ordinal))
     {
-        Console.WriteLine($"Cache behavior is consistent with previous run. 🙂 Elapsed: {elapsed.TotalSeconds:F2} s, Managed memory: {managedMb:F2} MB");
+        Console.WriteLine($"✔️\tCache behavior is consistent with previous run. \tElapsed: {elapsed.TotalSeconds:F2} s, Managed memory: {managedMb:F2} MB, Items: {cacheItemCount}, Eviction entries: {evictionTrackedCount}");
     }
     else
     {
-        Console.WriteLine($"Cache behavior is NOT consistent with previous run. 🙁 Elapsed: {elapsed.TotalSeconds:F2} s, Managed memory: {managedMb:F2} MB");
+        Console.WriteLine($"❌ Cache behavior is NOT consistent with previous run. \tElapsed: {elapsed.TotalSeconds:F2} s, Managed memory: {managedMb:F2} MB, Items: {cacheItemCount}, Eviction entries: {evictionTrackedCount}");
     }
 }

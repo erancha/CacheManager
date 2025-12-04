@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -38,11 +38,5 @@ for (int i = 0; i < operationsCount; i++)
 }
 
 File.WriteAllLines(OpsFilePath, lines);
-
-var cacheStatePath = "cache_state.txt";
-if (File.Exists(cacheStatePath))
-{
-    File.Delete(cacheStatePath);
-}
 
 Console.WriteLine($"Generated {lines.Count} operations into {OpsFilePath}.");
