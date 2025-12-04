@@ -47,7 +47,7 @@ You can optionally pass:
 - **First argument**: number of operations
 - **Second argument**: number of distinct keys
 
-Example (5000 operations over 200 keys):
+Example (1000000 operations over 10000 keys):
 
 ```bash
 dotnet run --project ./CacheManager.OpGenerator/CacheManager.OpGenerator.csproj -- 1000000 10000
@@ -57,14 +57,14 @@ This creates or overwrites `cache_ops.txt` in `/mnt/c/Projects/CacheManager`.
 
 ### 2. Execute operations and write/compare cache state
 
-```bash
-dotnet run --project ./CacheManager.Tester/CacheManager.Tester.csproj -- 10 1000
-```
-
 You can optionally pass:
 
 - **First argument**: number of test iterations (how many times to replay `cache_ops.txt` before snapshot/compare).
 - **Second argument**: cache capacity (max number of entries before LFU+LRU eviction kicks in). If omitted or non-positive, the cache is unlimited.
+
+```bash
+dotnet run --project ./CacheManager.Tester/CacheManager.Tester.csproj -- 10 1000
+```
 
 In the example above, the tester will execute the operations loop **10 times** over the same `cache_ops.txt` contents with a cache capacity of **1000** entries before taking the snapshot / comparison (default is **1** iteration and unlimited capacity if no arguments are provided).
 
@@ -72,3 +72,4 @@ Behavior:
 
 - **First run**: creates `cache_state.txt` from the current final cache contents and reports that a baseline snapshot was written.
 - **Subsequent runs with the same `cache_ops.txt`**: prints a message indicating whether the behavior is consistent with the previous run and shows the elapsed time for the execution.
+
